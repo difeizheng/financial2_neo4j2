@@ -724,6 +724,161 @@ def TEXT(value: Any, format_text: str) -> str:
     return str(value)
 
 
+# === 信息函数 ===
+
+def ISBLANK(value: Any) -> bool:
+    """判断单元格是否为空"""
+    if value is None:
+        return True
+    if isinstance(value, str) and value == "":
+        return True
+    return False
+
+
+def ISNUMBER(value: Any) -> bool:
+    """判断是否为数值"""
+    if value is None:
+        return False
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def ISTEXT(value: Any) -> bool:
+    """判断是否为文本"""
+    if value is None:
+        return False
+    return isinstance(value, str)
+
+
+def ISERROR(value: Any) -> bool:
+    """判断是否为错误值"""
+    if value is None:
+        return False
+    error_types = ["#N/A", "#VALUE!", "#REF!", "#DIV/0!", "#NUM!", "#NAME?", "#NULL!"]
+    if isinstance(value, str) and value in error_types:
+        return True
+    return False
+
+
+# === 扩展财务函数 ===
+
+def XIRR(values: List, dates: List, guess: Number = 0.1) -> Number:
+    """
+    计算不规则时间间隔现金流的内部收益率
+
+    参数:
+        values: 现金流数组（必须包含至少一个正数和一个负数）
+        dates: 对应日期数组（Excel日期序列号或日期对象）
+        guess: 初始猜测值（默认0.1）
+
+    返回:
+        年化内部收益率
+    """
+    if not values or not dates or len(values) != len(dates):
+        return None
+    if len(values) < 2:
+        return None
+
+    # 展平数组
+    flat_values = []
+    flat_dates = []
+    for i, v in enumerate(values):
+        if isinstance(v, (list, tuple)):
+            for j, vv in enumerate(v):
+                if vv is not None and isinstance(vv, (int, float)):
+                    flat_values.append(vv)
+                    d = dates[i]
+                    if isinstance(d, (list, tuple)):
+                        flat_dates.append(d[j] if j < len(d) else d[-1])
+                    else:
+                        flat_dates.append(d)
+        elif v is not None and isinstance(v, (int, float)):
+            flat_values.append(v)
+            d = dates[i]
+            if isinstance(d, (list, tuple)):
+                flat_dates.append(d[0])
+            else:
+                flat_dates.append(d)
+
+    if len(flat_values) < 2:
+        return None
+
+    # 检查是否包含正数和负数
+    has_positive = any(v > 0 for v in flat_values)
+    has_negative = any(v < 0 for v in flat_values)
+    if not (has_positive and has_negative):
+        return None
+
+    # 转换日期为天数（从第一个日期开始）
+    start_date = flat_dates[0]
+    try:
+        if isinstance(start_date, (int, float)):
+            # Excel日期序列号
+            start_days = start_date
+        elif isinstance(start_date, date):
+            # Python日期对象，转换为Excel序列号
+            EXCEL_DATE_BASE = date(1899, 12, 30)
+            start_days = (start_date - EXCEL_DATE_BASE).days
+        else:
+            return None
+
+        day_offsets = []
+        for d in flat_dates:
+            if isinstance(d, (int, float)):
+                day_offsets.append(d - start_days)
+            elif isinstance(d, date):
+                EXCEL_DATE_BASE = date(1899, 12, 30)
+                days = (d - EXCEL_DATE_BASE).days
+                day_offsets.append(days - start_days)
+            else:
+                return None
+    except Exception:
+        return None
+
+    # Newton-Raphson迭代求解XIRR
+    # NPV(rate) = sum(values[i] / (1+rate)^(days[i]/365)) = 0
+    rate = guess
+    max_iterations = 100
+    tolerance = 1e-6
+
+    for _ in range(max_iterations):
+        npv = 0
+        d_npv = 0  # NPV对rate的导数
+
+        for i, v in enumerate(flat_values):
+            years = day_offsets[i] / 365.0
+            if years < 0:
+                years = 0
+
+            factor = (1 + rate) ** years
+            npv += v / factor
+
+            # 导数：d/d(rate) [v / (1+rate)^years] = -v * years / (1+rate)^(years+1)
+            if factor > 0:
+                d_npv -= v * years / (factor * (1 + rate))
+
+        if abs(npv) < tolerance:
+            return rate * 100  # 返回百分比形式
+
+        if d_npv == 0:
+            break
+
+        # Newton法更新
+        new_rate = rate - npv / d_npv
+
+        # 边界检查
+        if new_rate < -0.99:
+            new_rate = -0.5
+        elif new_rate > 10:
+            new_rate = 5
+
+        if abs(new_rate - rate) < tolerance:
+            return rate * 100
+
+        rate = new_rate
+
+    return None  # 未收敛
+
+
 # === 函数注册表 ===
 EXCEL_FUNCTIONS = {
     # 数学统计
@@ -781,6 +936,7 @@ EXCEL_FUNCTIONS = {
     "PMT": PMT,
     "SLN": SLN,
     "SYD": SYD,
+    "XIRR": XIRR,
 
     # 查找
     "INDEX": INDEX,
@@ -797,4 +953,10 @@ EXCEL_FUNCTIONS = {
     "TRIM": TRIM,
     "VALUE": VALUE,
     "TEXT": TEXT,
+
+    # 信息
+    "ISBLANK": ISBLANK,
+    "ISNUMBER": ISNUMBER,
+    "ISTEXT": ISTEXT,
+    "ISERROR": ISERROR,
 }
