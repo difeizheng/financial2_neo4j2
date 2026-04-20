@@ -46,10 +46,10 @@ class TestCalcEngine:
         engine = CalcEngine(self.graph)
         engine.build_dag()
 
-        # A1应该有出度（被B2依赖）
-        assert self.graph.nodes["Sheet1_1_A"].out_degree == 1
-        # B2应该有入度（依赖A1）
-        assert self.graph.nodes["Sheet1_2_B"].in_degree == 1
+        # A1被B2依赖，所以A1的in_degree为1
+        assert self.graph.nodes["Sheet1_1_A"].in_degree == 1
+        # B2依赖A1，所以B2的out_degree为1
+        assert self.graph.nodes["Sheet1_2_B"].out_degree == 1
 
     def test_build_dag_range_reference(self):
         """测试范围引用DAG"""
@@ -61,7 +61,7 @@ class TestCalcEngine:
         engine = CalcEngine(self.graph)
         engine.build_dag()
 
-        # D2应该依赖A1, B1, C1
+        # D2依赖A1, B1, C1，所以D2的out_degree为3
         assert self.graph.nodes["Sheet1_2_D"].out_degree == 3
 
     def test_build_dag_cross_sheet(self):
@@ -72,10 +72,11 @@ class TestCalcEngine:
         engine = CalcEngine(self.graph)
         engine.build_dag()
 
-        # 检查边是否标记为跨sheet
-        edge = self.graph.edges.get("Sheet2_1_A->Sheet1_1_B")
-        if edge:
-            assert edge.is_cross_sheet == True
+        # 检查边是否标记为跨sheet（edges是列表）
+        for edge in self.graph.edges:
+            if edge.source_id == "Sheet2_1_A" and edge.target_id == "Sheet1_1_B":
+                assert edge.is_cross_sheet == True
+                break
 
     # === 拓扑排序测试 ===
 

@@ -6,8 +6,9 @@ from typing import Optional, List, Any
 
 # === Token 类型 ===
 TOKEN_TYPES = [
+    # 跨sheet范围引用：'表3'!A1:F10 或 参数输入表!A1:B10
+    ("SHEET_RANGE_REF", r"('[^']+')!([$]?[A-Z]{1,3}[$]?\d+):([$]?[A-Z]{1,3}[$]?\d+)|([\w\u4e00-\u9fff]+)!([$]?[A-Z]{1,3}[$]?\d+):([$]?[A-Z]{1,3}[$]?\d+)"),
     # 跨sheet引用：参数输入表!$I$380 或 '表 3'!A1
-    # 注意：sheet名不能包含运算符、括号等特殊字符
     ("SHEET_REF", r"('[^']+')!([$]?[A-Z]{1,3}[$]?\d+)|([\w\u4e00-\u9fff]+)!([$]?[A-Z]{1,3}[$]?\d+)"),
     # 范围引用：A1:B10 或 $A$1:$B$10
     ("RANGE_REF", r"([$]?[A-Z]{1,3}[$]?\d+):([$]?[A-Z]{1,3}[$]?\d+)"),
@@ -15,8 +16,10 @@ TOKEN_TYPES = [
     ("CELL_REF", r"[$]?[A-Z]{1,3}[$]?\d+"),
     # 函数名：SUM, IF, ROUND, DATEDIF
     ("FUNC", r"[A-Z_][A-Z0-9_]+(?=\s*\()"),
-    # 数字：123, 1.5, .5, -3
-    ("NUMBER", r"-?\d+\.?\d*|\.\d+"),
+    # 百分比：50%（必须在NUMBER前面，否则NUMBER会先匹配）
+    ("PERCENT", r"\d+%"),
+    # 数字：123, 1.5, .5（不匹配负数，负号作为运算符处理）
+    ("NUMBER", r"\d+\.?\d*|\.\d+"),
     # 字符串："hello"
     ("STRING", r'"[^"]*"'),
     # 布尔
@@ -87,9 +90,28 @@ class Tokenizer:
 
     def _create_token(self, token_type: str, value: str, match) -> Token:
         """根据匹配结果创建Token"""
-        if token_type == "SHEET_REF":
+        if token_type == "SHEET_RANGE_REF":
+            # 跨sheet范围引用：'表3'!A1:F10
+            if match.group(1):  # quoted sheet name
+                sheet_name = match.group(1).strip("'")
+                start_ref = match.group(2)
+                end_ref = match.group(3)
+            else:  # unquoted sheet name
+                sheet_name = match.group(4)
+                start_ref = match.group(5)
+                end_ref = match.group(6)
+            start = self._parse_cell_ref_token(start_ref)
+            end = self._parse_cell_ref_token(end_ref)
+            return Token(
+                type="RANGE_REF",
+                value=value,
+                sheet=sheet_name,
+                start_ref=start,
+                end_ref=end,
+            )
+
+        elif token_type == "SHEET_REF":
             # 跨sheet引用：'参数输入表'!$I$380 或 参数输入表!$I$380
-            # 新regex有4个group: (quoted_sheet)!cell 或 (unquoted_sheet)!cell
             if match.group(1):  # quoted sheet name like '表名'
                 sheet_name = match.group(1).strip("'")
                 cell_ref = match.group(2)
@@ -137,6 +159,11 @@ class Tokenizer:
 
         elif token_type == "NUMBER":
             num = float(value) if '.' in value else int(value)
+            return Token(type="NUMBER", value=num)
+
+        elif token_type == "PERCENT":
+            # 百分比：50% -> 0.5
+            num = float(value[:-1]) / 100
             return Token(type="NUMBER", value=num)
 
         elif token_type == "STRING":
@@ -226,6 +253,7 @@ class ASTNode:
         refs = []
         if self.node_type == "cell_ref":
             refs.append({
+                "type": "cell",
                 "sheet": self.sheet,
                 "col": self.col,
                 "row": self.row,
@@ -233,7 +261,7 @@ class ASTNode:
                 "abs_row": self.abs_row,
             })
         elif self.node_type == "range_ref":
-            # 范围引用需要展开为所有单元格
+            # 范围引用返回一个range类型的引用
             refs.append({
                 "type": "range",
                 "sheet": self.sheet,
@@ -244,7 +272,9 @@ class ASTNode:
             })
         if self.children:
             for child in self.children:
-                refs.extend(child.get_references())
+                # 跳过range_ref内部的cell_ref（已包含在range中）
+                if child.node_type != "cell_ref" or self.node_type != "range_ref":
+                    refs.extend(child.get_references())
         return refs
 
 
@@ -398,21 +428,23 @@ class FormulaParser:
         # 范围引用
         if token.type == "RANGE_REF":
             self.pos += 1
+            # 使用token.sheet（跨sheet范围）或current_sheet
+            range_sheet = token.sheet if hasattr(token, 'sheet') and token.sheet else self.current_sheet
             start = ASTNode(
                 node_type="cell_ref",
-                sheet=self.current_sheet,
+                sheet=range_sheet,
                 col=token.start_ref.col,
                 row=token.start_ref.row,
             )
             end = ASTNode(
                 node_type="cell_ref",
-                sheet=self.current_sheet,
+                sheet=range_sheet,
                 col=token.end_ref.col,
                 row=token.end_ref.row,
             )
             return ASTNode(
                 node_type="range_ref",
-                sheet=self.current_sheet,
+                sheet=range_sheet,
                 children=[start, end],
             )
 

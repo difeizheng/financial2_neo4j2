@@ -7,6 +7,8 @@
 *.db
 data/uploads/
 data/output/
+financial_kg/data/output/
+financial_kg/data/uploads/
 data/*.json
 
 # Python

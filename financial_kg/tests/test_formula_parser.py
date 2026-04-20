@@ -23,7 +23,7 @@ class TestFormulaParser:
         assert ast.node_type == "cell_ref"
         assert ast.col == "A"
         assert ast.row == 1
-        assert ast.sheet is None  # 同sheet引用，sheet为None
+        assert ast.sheet == "Sheet1"  # 同sheet引用，sheet为current_sheet
 
     def test_parse_cross_sheet_ref(self):
         """测试跨sheet引用"""
