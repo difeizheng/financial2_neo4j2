@@ -1,0 +1,33 @@
+# Secrets - DO NOT COMMIT
+.env
+*.env.local
+
+# Data files - sample Excel excluded (large file)
+*.xlsx
+*.db
+data/uploads/
+data/output/
+data/*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/

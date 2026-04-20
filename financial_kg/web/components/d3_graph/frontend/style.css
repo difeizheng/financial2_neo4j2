@@ -1,0 +1,379 @@
+/* 财务模型知识图谱样式 */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    overflow: hidden;
+}
+
+#container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* 控制面板 */
+#controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 10px 15px;
+    background-color: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    align-items: center;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.control-group label {
+    font-size: 14px;
+    color: #333;
+    white-space: nowrap;
+}
+
+.control-group input,
+.control-group select {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.control-group button {
+    padding: 6px 15px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.control-group button:hover {
+    background-color: #1976D2;
+}
+
+#reset-btn {
+    background-color: #757575;
+}
+
+#reset-btn:hover {
+    background-color: #616161;
+}
+
+/* 图谱容器 */
+#graph-container {
+    flex: 1;
+    position: relative;
+    background-color: #fafafa;
+}
+
+#graph-svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* 节点样式 */
+.node {
+    cursor: pointer;
+    transition: fill 0.3s ease;
+}
+
+.node:hover {
+    stroke-width: 3;
+}
+
+.node-label {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* 边样式 */
+.edge {
+    stroke-linecap: round;
+}
+
+.edge.cross-sheet {
+    stroke-dasharray: 5, 5;
+}
+
+/* 详情面板 */
+#detail-panel {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    width: 320px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+#detail-panel.hidden {
+    display: none;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #2196F3;
+    color: white;
+    border-radius: 8px 8px 0 0;
+}
+
+.panel-header h3 {
+    font-size: 16px;
+}
+
+#close-panel {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.panel-content {
+    padding: 15px;
+}
+
+.info-row {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+
+.info-row strong {
+    color: #555;
+    margin-right: 8px;
+}
+
+#dependency-info {
+    margin-top: 15px;
+}
+
+#dependency-info h4 {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+#upstream-list,
+#downstream-list {
+    font-size: 13px;
+    color: #666;
+    padding: 5px 0;
+}
+
+#value-modify {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 2px solid #eee;
+}
+
+#value-modify h4 {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.modify-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.modify-input-group input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.modify-input-group button {
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.modify-input-group button:hover {
+    background-color: #43A047;
+}
+
+.modify-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #666;
+}
+
+#value-modify.hidden {
+    display: none;
+}
+
+/* 传播动画面板 */
+#propagation-panel {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    width: 280px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+}
+
+#propagation-panel.hidden {
+    display: none;
+}
+
+#propagation-panel .panel-header {
+    background-color: #FF5722;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+#propagation-panel #stop-propagation-btn,
+#propagation-panel #replay-propagation-btn,
+#propagation-panel #fullscreen-btn {
+    padding: 5px 10px;
+    background-color: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#propagation-panel #replay-propagation-btn:hover,
+#propagation-panel #fullscreen-btn:hover {
+    background-color: rgba(255,255,255,0.35);
+}
+
+/* 全屏模式 */
+#container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background: #fafafa;
+}
+
+#propagation-progress-container {
+    margin-bottom: 15px;
+}
+
+#propagation-progress-bar {
+    height: 8px;
+    background-color: #E0E0E0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#propagation-progress-bar::before {
+    content: '';
+    display: block;
+    height: 100%;
+    background-color: #4CAF50;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+#propagation-progress-text {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #666;
+}
+
+#propagation-stats {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+#propagation-stats div {
+    padding: 5px 0;
+}
+
+#export-changes-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#export-changes-btn:hover {
+    background-color: #1976D2;
+}
+
+/* 统计栏 */
+#stats-bar {
+    display: flex;
+    gap: 20px;
+    padding: 8px 15px;
+    background-color: #333;
+    color: white;
+    font-size: 13px;
+}
+
+/* 提示框 */
+#propagation-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 4px;
+    z-index: 200;
+    animation: fadeIn 0.3s ease;
+}
+
+#propagation-toast.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 响应式 */
+@media (max-width: 600px) {
+    #controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #detail-panel {
+        width: calc(100% - 40px);
+        right: 20px;
+    }
+}

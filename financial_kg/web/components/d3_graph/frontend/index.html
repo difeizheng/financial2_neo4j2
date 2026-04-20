@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务模型知识图谱</title>
+    <!-- 使用unpkg CDN（更稳定），cdnjs作为fallback -->
+    <script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
+    <script>
+        if(typeof d3==='undefined'){
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"><\/script>');
+        }
+    </script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <!-- 控制面板 -->
+        <div id="controls">
+            <div class="control-group">
+                <label>搜索节点:</label>
+                <input type="text" id="search-input" placeholder="输入节点ID或值">
+                <button id="search-btn">搜索</button>
+            </div>
+            <div class="control-group">
+                <label>Sheet过滤:</label>
+                <select id="sheet-filter">
+                    <option value="all">全部</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>显示深度:</label>
+                <select id="depth-filter">
+                    <option value="all">全部</option>
+                    <option value="0">输入节点 (depth=0)</option>
+                    <option value="1-3">浅层 (1-3)</option>
+                    <option value="4+">深层 (4+)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <button id="reset-btn">重置视图</button>
+            </div>
+        </div>
+
+        <!-- 图谱容器 -->
+        <div id="graph-container">
+            <svg id="graph-svg"></svg>
+        </div>
+
+        <!-- 节点详情面板 -->
+        <div id="detail-panel" class="hidden">
+            <div class="panel-header">
+                <h3>节点详情</h3>
+                <button id="close-panel">×</button>
+            </div>
+            <div class="panel-content">
+                <div id="node-info"></div>
+                <div id="dependency-info">
+                    <h4>依赖关系</h4>
+                    <div id="upstream-list"></div>
+                    <div id="downstream-list"></div>
+                </div>
+                <div id="value-modify">
+                    <h4>修改值并传播</h4>
+                    <div class="modify-input-group">
+                        <input type="number" id="new-value-input" placeholder="输入新值">
+                        <button id="apply-value-btn">应用并传播</button>
+                    </div>
+                    <div class="modify-hint">修改输入节点值后，将自动计算并动画展示所有下游节点的变化</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 传播动画面板 -->
+        <div id="propagation-panel" class="hidden">
+            <div class="panel-header">
+                <h3>值传播动画</h3>
+                <div class="panel-actions">
+                    <button id="replay-propagation-btn" title="重复播放">↺</button>
+                    <button id="fullscreen-btn" title="全屏">⛶</button>
+                    <button id="stop-propagation-btn">停止</button>
+                </div>
+            </div>
+            <div class="panel-content">
+                <div id="propagation-progress-container">
+                    <div id="propagation-progress-bar"></div>
+                    <div id="propagation-progress-text">传播进度: 0/0 层</div>
+                </div>
+                <div id="propagation-stats">
+                    <div>源节点: <span id="source-node-name">-</span></div>
+                    <div>受影响节点: <span id="affected-count">0</span></div>
+                </div>
+                <button id="export-changes-btn">导出变化详情</button>
+            </div>
+        </div>
+
+        <!-- 传播动画提示 -->
+        <div id="propagation-toast" class="hidden">
+            <span id="propagation-message"></span>
+        </div>
+
+        <!-- 统计信息 -->
+        <div id="stats-bar">
+            <span id="node-count">节点: 0</span>
+            <span id="edge-count">边: 0</span>
+            <span id="selected-node">选中: 无</span>
+        </div>
+    </div>
+
+    <script src="graph.js"></script>
+    <script src="propagation.js"></script>
+</body>
+</html>
