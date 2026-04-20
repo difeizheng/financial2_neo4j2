@@ -135,21 +135,42 @@ class CalcEngine:
         if len(result) != len(self.graph.nodes):
             remaining = [nid for nid in self.graph.nodes if nid not in result]
 
-            # 分析循环类型
+            # 第一轮：初步分类
             for nid in remaining:
                 node = self.graph.nodes[nid]
-
-                # 检查是否是跨表双向引用
                 is_cross_bidirectional = self._is_cross_sheet_bidirectional(nid)
-
                 if is_cross_bidirectional:
-                    # 跨表双向引用：标记为特殊状态，不是错误
                     node.parse_status = "cross_bidirectional"
                     node.error_msg = "跨表双向引用（参数表汇总）"
                 else:
-                    # 真正的循环依赖：标记为错误
                     node.parse_status = "error"
                     node.error_msg = "循环依赖"
+
+            # 第二轮：传播cross_bidirectional标记（最多3轮）
+            # 原因：依赖cross_bidirectional节点的节点也会在remaining中
+            for round_num in range(3):
+                changed = False
+                for nid in remaining:
+                    node = self.graph.nodes[nid]
+                    if node.parse_status == "error":
+                        # 检查上游是否全部是cross_bidirectional或evaluated或parsed
+                        upstream_ids = self.graph.adjacency.get(nid, [])
+                        all_cross_or_evaluated = True
+                        for up_id in upstream_ids:
+                            up_node = self.graph.nodes.get(up_id)
+                            # 上游在result中（parsed/evaluated）或remaining中（cross_bidirectional）
+                            if up_node and up_node.parse_status not in ("cross_bidirectional", "evaluated", "parsed", None):
+                                # 上游是error或raw，则当前节点也是error
+                                all_cross_or_evaluated = False
+                                break
+
+                        if all_cross_or_evaluated and len(upstream_ids) > 0:
+                            node.parse_status = "cross_bidirectional"
+                            node.error_msg = "依赖跨表引用节点"
+                            changed = True
+
+                if not changed:
+                    break
 
         self.graph.topo_order = result
         return result
