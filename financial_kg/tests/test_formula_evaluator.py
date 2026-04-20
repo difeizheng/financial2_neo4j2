@@ -10,7 +10,7 @@ class TestFormulaEvaluator:
     """公式求值器测试"""
 
     def setup_method(self):
-        self.graph = KnowledgeGraph(name="test")
+        self.graph = KnowledgeGraph(name="test", source_file="test.xlsx")
         self.parser = FormulaParser()
         self.evaluator = FormulaEvaluator(self.graph)
 

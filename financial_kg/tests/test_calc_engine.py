@@ -10,7 +10,7 @@ class TestCalcEngine:
     """计算引擎测试"""
 
     def setup_method(self):
-        self.graph = KnowledgeGraph(name="test")
+        self.graph = KnowledgeGraph(name="test", source_file="test.xlsx")
         self.parser = FormulaParser()
 
     def _add_node(self, sheet: str, row: int, col: str, value, formula=None):
