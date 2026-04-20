@@ -149,9 +149,30 @@ def render_cell_detail_page():
     if error_nodes:
         st.warning(f"共有 {len(error_nodes)} 个公式解析错误")
 
-        error_limit = st.slider("显示数量", 10, min(100, len(error_nodes)), 20)
-        for n in error_nodes[:error_limit]:
-            st.markdown(f"- **{n.get('id')}**: {n.get('error_msg', '未知错误')}")
+        # 错误类型分类
+        error_types = {}
+        for n in error_nodes:
+            err_msg = n.get("error_msg", "未知错误")
+            if err_msg not in error_types:
+                error_types[err_msg] = []
+            error_types[err_msg].append(n)
+
+        st.markdown("**错误类型分布:**")
+        for err_msg, nodes_list in sorted(error_types.items(), key=lambda x: -len(x[1])):
+            with st.expander(f"**{err_msg}** ({len(nodes_list)}个)", expanded=(err_msg == list(error_types.keys())[0])):
+                # 显示该错误类型的典型公式
+                for n in nodes_list[:20]:
+                    formula = n.get("formula_raw", "")
+                    addr = n.get("address", n.get("id", ""))
+                    # 显示公式内容（截断过长的公式）
+                    if len(formula) > 80:
+                        formula_display = formula[:80] + "..."
+                    else:
+                        formula_display = formula
+                    st.markdown(f"- **{addr}**: `{formula_display}`")
+
+                if len(nodes_list) > 20:
+                    st.markdown(f"... 还有 {len(nodes_list) - 20} 个同类错误")
 
     else:
         st.success("所有公式解析成功")

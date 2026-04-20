@@ -61,6 +61,8 @@ class CellNode:
             "value": self._serialize_value(self.value),
             "value_type": self.value_type,
             "formula_raw": self.formula_raw,
+            "formula_ast": self.formula_ast,
+            "computed_value": self._serialize_value(self.computed_value),
             "is_header": self.is_header,
             "is_merged": self.is_merged,
             "merge_range": self.merge_range,
@@ -70,6 +72,7 @@ class CellNode:
             "row_label": self.row_label,
             "col_label": self.col_label,
             "semantic_name": self.semantic_name,
+            "semantic_desc": self.semantic_desc,
             "semantic_unit": self.semantic_unit,
             "semantic_tags": self.semantic_tags,
             "depth": self.depth,
@@ -78,6 +81,7 @@ class CellNode:
             "is_input": self.is_input,
             "is_output": self.is_output,
             "parse_status": self.parse_status,
+            "error_msg": self.error_msg,
         }
 
     def _serialize_value(self, v: Any) -> Any:
