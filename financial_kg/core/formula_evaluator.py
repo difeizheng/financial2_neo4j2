@@ -109,6 +109,14 @@ class FormulaEvaluator:
             return self._apply_unary_op(ast.operator, operand)
 
         if ast.node_type == "function_call":
+            # IF函数特殊处理：短路求值
+            if ast.func_name.upper() == "IF" and len(ast.children) >= 3:
+                condition = self._eval_ast(ast.children[0])
+                if condition:  # 条件为True
+                    return self._eval_ast(ast.children[1])
+                else:  # 条件为False
+                    return self._eval_ast(ast.children[2])
+            # 其他函数：全部参数求值后调用
             args = [self._eval_ast(arg) for arg in ast.children]
             return self._call_function(ast.func_name, args)
 
@@ -175,13 +183,17 @@ class FormulaEvaluator:
     def _apply_binary_op(self, op: str, left: Any, right: Any) -> Any:
         """应用二元运算符"""
         if left is None or right is None:
+            # 算术运算：返回None
             if op in ("+", "-", "*", "/", "^"):
                 return None
-            # 比较运算
-            if op == "=":
-                return left == right
-            if op == "<>":
-                return left != right
+            # 比较运算：None与任何值比较返回False（Excel行为）
+            if op in ("=", "<>", "<", ">", "<=", ">="):
+                if op == "=":
+                    return left == right  # None == None -> True
+                if op == "<>":
+                    return left != right  # None != None -> False
+                # None与数值比较返回False
+                return False
 
         # 算术运算前转换为Excel兼容数值（处理日期等）
         if op in ("+", "-", "*", "/", "^"):

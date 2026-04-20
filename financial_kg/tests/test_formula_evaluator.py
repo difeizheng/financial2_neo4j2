@@ -246,6 +246,62 @@ class TestFormulaEvaluator:
         result = self.evaluator.evaluate("Sheet1_2_E", "Sheet1")
         assert result == 6
 
+    # === None值处理测试 ===
+
+    def test_eval_comparison_with_none(self):
+        """测试None值比较（不应抛出TypeError）"""
+        # None与数值比较应返回False
+        self._add_node("Sheet1", 1, "A", None)  # A1 = None
+        self._add_node("Sheet1", 1, "B", None, "A1<0")  # None < 0
+        result = self.evaluator.evaluate("Sheet1_1_B", "Sheet1")
+        assert result == False
+
+        self._add_node("Sheet1", 1, "C", None, "A1>0")  # None > 0
+        result = self.evaluator.evaluate("Sheet1_1_C", "Sheet1")
+        assert result == False
+
+        self._add_node("Sheet1", 1, "D", None, "A1=0")  # None = 0
+        result = self.evaluator.evaluate("Sheet1_1_D", "Sheet1")
+        assert result == False
+
+    def test_eval_arithmetic_with_none(self):
+        """测试None值算术运算"""
+        self._add_node("Sheet1", 1, "A", None)
+        self._add_node("Sheet1", 1, "B", 10)
+        self._add_node("Sheet1", 1, "C", None, "A1+B1")  # None + 10
+        result = self.evaluator.evaluate("Sheet1_1_C", "Sheet1")
+        assert result is None
+
+    def test_eval_if_short_circuit(self):
+        """测试IF短路求值（避免求值else分支）"""
+        # 当条件为True时，不应求值else分支
+        # 即使else分支有None比较错误，也应正常返回
+        self._add_node("Sheet1", 1, "A", None)  # A1 = None (会引发比较错误)
+        self._add_node("Sheet1", 1, "B", 100)   # B1 = 100
+        # IF(B1>50, 1, A1<0) - 条件为True，不应求值A1<0
+        self._add_node("Sheet1", 1, "C", None, "IF(B1>50, 1, A1<0)")
+        result = self.evaluator.evaluate("Sheet1_1_C", "Sheet1")
+        assert result == 1  # 返回true分支，不报错
+
+        # 条件为False时，应求值else分支
+        self._add_node("Sheet1", 1, "D", None, "IF(B1<50, 1, 0)")
+        result = self.evaluator.evaluate("Sheet1_1_D", "Sheet1")
+        assert result == 0
+
+    def test_eval_nested_if_with_none(self):
+        """测试嵌套IF处理None值"""
+        # IF(ISBLANK(A1), 0, A1-10) 模式
+        self._add_node("Sheet1", 1, "A", None)  # A1 = None
+        self._add_node("Sheet1", 1, "B", None, "IF(ISBLANK(A1), 0, A1-10)")
+        result = self.evaluator.evaluate("Sheet1_1_B", "Sheet1")
+        assert result == 0  # ISBLANK返回True，返回0
+
+        # A1有值时
+        self._add_node("Sheet1", 2, "A", 20)
+        self._add_node("Sheet1", 2, "B", None, "IF(ISBLANK(A2), 0, A2-10)")
+        result = self.evaluator.evaluate("Sheet1_2_B", "Sheet1")
+        assert result == 10
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
