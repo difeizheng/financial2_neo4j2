@@ -159,7 +159,9 @@ class CalcEngine:
 
         跨表双向引用在Excel财务模型中很常见：
         - 参数输入表汇总其他表数据，其他表又引用参数输入表参数
-        - 判断标准：节点有跨sheet依赖（上游或下游在不同sheet）
+        - 判断标准：
+          1. 节点有跨sheet依赖（上游或下游在不同sheet）
+          2. 节点依赖跨sheet引用节点（间接跨表）
         """
         node = self.graph.nodes.get(node_id)
         if node is None:
@@ -170,6 +172,9 @@ class CalcEngine:
         for up_id in upstream_ids:
             up_node = self.graph.nodes.get(up_id)
             if up_node and up_node.sheet != node.sheet:
+                return True
+            # 检查上游节点是否是跨sheet引用节点（parse_status为cross_bidirectional）
+            if up_node and up_node.parse_status == "cross_bidirectional":
                 return True
 
         # 检查下游被依赖是否有跨sheet节点
