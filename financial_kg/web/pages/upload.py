@@ -67,8 +67,8 @@ def render_upload_page():
             if st.button("清空选择"):
                 st.session_state["target_sheets"] = []
 
-        # 获取当前选择（优先使用session_state）
-        default_sheets = st.session_state.get("target_sheets", sheet_names[:4] if len(sheet_names) >= 4 else sheet_names)
+        # 获取当前选择（优先使用session_state，默认全部sheet）
+        default_sheets = st.session_state.get("target_sheets", sheet_names)
 
         target_sheets = st.multiselect(
             "选择目标Sheet",
@@ -83,9 +83,11 @@ def render_upload_page():
         if target_sheets:
             st.markdown(f"**已选择 {len(target_sheets)} 个sheet**: {', '.join(target_sheets)}")
 
-            # 预估解析规模
-            if len(target_sheets) > 4:
-                st.warning(f"⚠️ 选择较多sheet ({len(target_sheets)}个)，解析时间可能较长。建议先解析4个sheet验证效果。")
+            # 预估解析规模（全量解析时显示进度提示）
+            if len(target_sheets) == len(sheet_names):
+                st.info(f"📊 全量解析 {len(target_sheets)} 个sheet，预计解析时间 5-10 分钟")
+            elif len(target_sheets) > 4:
+                st.warning(f"⚠️ 选择部分sheet ({len(target_sheets)}个)，跨sheet公式依赖可能不完整")
 
         # 任务名称
         task_name = st.text_input(
