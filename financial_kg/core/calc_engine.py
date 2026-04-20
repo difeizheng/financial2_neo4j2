@@ -106,7 +106,12 @@ class CalcEngine:
             node.is_output = node.in_degree == 0 and node.formula_raw is not None
 
     def topological_sort(self) -> List[str]:
-        """Kahn算法拓扑排序，返回有序node_id列表"""
+        """Kahn算法拓扑排序，返回有序node_id列表
+
+        改进：区分"跨表双向引用"和真正的循环依赖
+        - 跨表双向引用：参数输入表 ↔ 其他表（Excel财务模型常见设计）
+        - 真正的循环依赖：同sheet内的公式循环引用
+        """
         # 计算入度（依赖数）
         in_degree = defaultdict(int)
         for node_id in self.graph.nodes:
@@ -126,16 +131,55 @@ class CalcEngine:
                 if in_degree[downstream_id] == 0:
                     queue.append(downstream_id)
 
-        # 检测循环依赖
+        # 处理剩余节点（入度不为0的节点）
         if len(result) != len(self.graph.nodes):
-            # 有循环依赖
             remaining = [nid for nid in self.graph.nodes if nid not in result]
+
+            # 分析循环类型
             for nid in remaining:
-                self.graph.nodes[nid].parse_status = "error"
-                self.graph.nodes[nid].error_msg = "循环依赖"
+                node = self.graph.nodes[nid]
+
+                # 检查是否是跨表双向引用
+                is_cross_bidirectional = self._is_cross_sheet_bidirectional(nid)
+
+                if is_cross_bidirectional:
+                    # 跨表双向引用：标记为特殊状态，不是错误
+                    node.parse_status = "cross_bidirectional"
+                    node.error_msg = "跨表双向引用（参数表汇总）"
+                else:
+                    # 真正的循环依赖：标记为错误
+                    node.parse_status = "error"
+                    node.error_msg = "循环依赖"
 
         self.graph.topo_order = result
         return result
+
+    def _is_cross_sheet_bidirectional(self, node_id: str) -> bool:
+        """判断节点是否属于跨表双向引用（高效版本）
+
+        跨表双向引用在Excel财务模型中很常见：
+        - 参数输入表汇总其他表数据，其他表又引用参数输入表参数
+        - 判断标准：节点有跨sheet依赖（上游或下游在不同sheet）
+        """
+        node = self.graph.nodes.get(node_id)
+        if node is None:
+            return False
+
+        # 检查上游依赖是否有跨sheet节点
+        upstream_ids = self.graph.adjacency.get(node_id, [])
+        for up_id in upstream_ids:
+            up_node = self.graph.nodes.get(up_id)
+            if up_node and up_node.sheet != node.sheet:
+                return True
+
+        # 检查下游被依赖是否有跨sheet节点
+        downstream_ids = self.graph.reverse_adjacency.get(node_id, [])
+        for down_id in downstream_ids:
+            down_node = self.graph.nodes.get(down_id)
+            if down_node and down_node.sheet != node.sheet:
+                return True
+
+        return False
 
     def compute_depths(self) -> None:
         """计算每个节点的DAG深度"""

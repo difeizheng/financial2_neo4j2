@@ -143,11 +143,45 @@ def render_cell_detail_page():
 
     # === 公式错误列表 ===
     st.markdown("---")
-    st.markdown("### 公式错误节点")
+    st.markdown("### 公式节点状态统计")
 
+    # 分类统计
+    status_counts = {}
+    for n in nodes:
+        status = n.get("parse_status", "raw")
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    # 显示状态统计
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("解析成功", status_counts.get("parsed", 0) + status_counts.get("evaluated", 0))
+    with col2:
+        st.metric("跨表双向引用", status_counts.get("cross_bidirectional", 0), delta=None if status_counts.get("cross_bidirectional", 0) > 0 else None)
+    with col3:
+        st.metric("解析错误", status_counts.get("error", 0), delta=-status_counts.get("error", 0) if status_counts.get("error", 0) > 0 else None)
+    with col4:
+        st.metric("未解析", status_counts.get("raw", 0))
+
+    st.markdown("---")
+
+    # === 跨表双向引用（非错误） ===
+    cross_bidirectional_nodes = [n for n in nodes if n.get("parse_status") == "cross_bidirectional"]
+    if cross_bidirectional_nodes:
+        st.info(f"**跨表双向引用**: {len(cross_bidirectional_nodes)} 个节点（参数输入表 ↔ 其他表，Excel财务模型常见设计）")
+
+        with st.expander("查看详情", expanded=False):
+            for n in cross_bidirectional_nodes[:20]:
+                formula = n.get("formula_raw", "")
+                addr = n.get("address", n.get("id", ""))
+                formula_display = formula[:60] + "..." if len(formula) > 60 else formula
+                st.markdown(f"- **{addr}**: `{formula_display}`")
+            if len(cross_bidirectional_nodes) > 20:
+                st.markdown(f"... 还有 {len(cross_bidirectional_nodes) - 20} 个")
+
+    # === 真正的错误 ===
     error_nodes = [n for n in nodes if n.get("parse_status") == "error"]
     if error_nodes:
-        st.warning(f"共有 {len(error_nodes)} 个公式解析错误")
+        st.warning(f"**解析错误**: {len(error_nodes)} 个节点（需要修复）")
 
         # 错误类型分类
         error_types = {}
@@ -160,19 +194,13 @@ def render_cell_detail_page():
         st.markdown("**错误类型分布:**")
         for err_msg, nodes_list in sorted(error_types.items(), key=lambda x: -len(x[1])):
             with st.expander(f"**{err_msg}** ({len(nodes_list)}个)", expanded=(err_msg == list(error_types.keys())[0])):
-                # 显示该错误类型的典型公式
-                for n in nodes_list[:20]:
+                for n in nodes_list[:15]:
                     formula = n.get("formula_raw", "")
                     addr = n.get("address", n.get("id", ""))
-                    # 显示公式内容（截断过长的公式）
-                    if len(formula) > 80:
-                        formula_display = formula[:80] + "..."
-                    else:
-                        formula_display = formula
+                    formula_display = formula[:80] + "..." if len(formula) > 80 else formula
                     st.markdown(f"- **{addr}**: `{formula_display}`")
-
-                if len(nodes_list) > 20:
-                    st.markdown(f"... 还有 {len(nodes_list) - 20} 个同类错误")
+                if len(nodes_list) > 15:
+                    st.markdown(f"... 还有 {len(nodes_list) - 15} 个同类错误")
 
     else:
         st.success("所有公式解析成功")
